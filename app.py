@@ -94,17 +94,21 @@ def send_visits():
     print(f"🚀 Sending visits to UID: {uid} using {len(tokens)} tokens")
     print("Waiting for total 200 successful visits...")
 
-    total_success, total_sent = asyncio.run(send_until_200_success(
-        tokens, uid, server,
-        target_success=200
-    ))
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        total_success, total_sent = loop.run_until_complete(send_until_200_success(
+            tokens, uid, server, target_success=200
+        ))
+        loop.close()
+    except Exception as e:
+        return jsonify({"message": f"❌ Async error: {str(e)}"}), 500
 
     return jsonify({
         "message": f"✅ Sent {total_success} successful visits in total.",
         "uid": uid,
         "region": server,
-        "total_tokens_used": total_sent
     }), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=50099)
+    app.run(host="0.0.0.0", port=5000)
