@@ -77,38 +77,36 @@ async def send_until_200_success(tokens, uid, server_name, target_success=200):
 @app.route('/visit', methods=['GET'])
 def send_visits():
     uid = request.args.get('uid')
-    server = request.args.get('region', '').upper()
+    region = request.args.get('region')
 
-    if not uid or not uid.isdigit():
-        return jsonify({"message": "❌ Invalid or missing UID"}), 400
+    if not uid or not region:
+        return jsonify({"message": "❌ Missing 'uid' or 'region' parameter"}), 400
 
-    if not server:
-        return jsonify({"message": "❌ Missing region"}), 400
+    try:
+        uid = int(uid)
+    except ValueError:
+        return jsonify({"message": "❌ 'uid' must be an integer"}), 400
 
-    tokens = load_tokens(server)
+    region = region.upper()
+    tokens = load_tokens(region)
 
     if not tokens:
         return jsonify({"message": "❌ No valid tokens found"}), 500
 
-    uid = int(uid)
     print(f"🚀 Sending visits to UID: {uid} using {len(tokens)} tokens")
     print("Waiting for total 200 successful visits...")
 
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        total_success, total_sent = loop.run_until_complete(send_until_200_success(
-            tokens, uid, server, target_success=200
-        ))
-        loop.close()
-    except Exception as e:
-        return jsonify({"message": f"❌ Async error: {str(e)}"}), 500
+    total_success, total_sent = asyncio.run(send_until_200_success(
+        tokens, uid, region, target_success=200
+    ))
 
     return jsonify({
-        "message": f"✅ Sent {total_success} successful visits in total.",
+        "message": f"✅ Sent {total_success} successful visits.",
         "uid": uid,
-        "region": server,
+        "region": region,
+        "total_tokens_used": len(tokens),
+        "total_requests_sent": total_sent
     }), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=50099)
